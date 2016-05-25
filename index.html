@@ -9,33 +9,692 @@
         <title></title>
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <script src="d3/d3.js"></script>
+        <script src="d3/d3.js" charset="utf-8"></script>
+
         <!-- Place favicon.ico and apple-touch-icon.png in the root directory -->
+        <style>
+        body {
+          font: 15px sans-serif;
+        }
+
+        .axis path,
+        .axis line {
+          fill: none;
+          stroke: #000;
+          shape-rendering: crispEdges;
+        }
+
+        #student_debt path, 
+        #delinquency_rates path,
+        #interest_rates path{
+            fill: none;
+        }
+
+        .grid .tick {
+            stroke: lightgrey;
+            opacity: 0.7;
+        }
+
+        .grid path{
+            stroke-width: 0;
+        }
+
+        .tooltip {
+          background: #eee;
+          box-shadow: 0 0 5px #999999;
+          color: #333;
+          display: none;
+          font-size: 12px;
+          left: 165px;
+          padding: 10px;
+          position: absolute;
+          text-align: center;
+          top: 35%;
+          width: 80px;
+          z-index: 10;
+        }
+        </style>
     </head>
     <body>
-        <!--[if lt IE 7]>
-            <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
-        <![endif]-->
+        <div style="padding-left:60%">
+            <div id="student_debt"></div>
+            <div id="delinquency_rates"></div>
+            <div id="interest_rates"></div>
+        </div>
 
-        <p>Hello world! This is HTML5 Boilerplate.</p>
+        <div id="buttons" style="position: relative; top:-95px; left:10%"> 
+        <label><input type="radio" name="dataset" value="osix">2006</label>
+          <label><input type="radio" name="dataset" value="oseven">2007</label>
+          <label><input type="radio" name="dataset" value="oeight">2008</label>
+          <label><input type="radio" name="dataset" value="onine">2009</label>
+          <label><input type="radio" name="dataset" value="ten">2010</label>
+          <label><input type="radio" name="dataset" value="eleven">2011</label>
+          <label><input type="radio" name="dataset" value="twelve">2012</label>
+          <label><input type="radio" name="dataset" value="thirteen">2013</label>
+          <label><input type="radio" name="dataset" value="fourteen">2014</label>
+          <label><input type="radio" name="dataset" value="fifteen" checked>2015</label>
+        </div>
 
-        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
-        <script>window.jQuery || document.write('<script src="js/vendor/jquery-1.10.2.min.js"><\/script>')</script>
+        <div id="piechart" style="position:relative; top:-600px; left:13%">
+        </div>
 
-        <!-- Google Analytics: change UA-XXXXX-X to be your site's ID. -->
         <script>
-            (function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=
-            function(){(b[l].q=b[l].q||[]).push(arguments)});b[l].l=+new Date;
-            e=o.createElement(i);r=o.getElementsByTagName(i)[0];
-            e.src='//www.google-analytics.com/analytics.js';
-            r.parentNode.insertBefore(e,r)}(window,document,'script','ga'));
-            ga('create','UA-XXXXX-X');ga('send','pageview');
 
-            var canvas = d3.select("body").append("svg").attr("width", 500).attr("height", 500);
+        var margin = {top: 50, right: 20, bottom: 30, left: 50},
+            width = 500 - margin.left - margin.right,
+            height = 240 - margin.top - margin.bottom - 25;
 
-            var circle = canvas.append("circle").attr("cx", 250).attr("cy", 250).attr("r", 200).attr("fill", "red");
+        var parseDate = d3.time.format("%Y%m%d").parse;
 
-            var circle = canvas.append("line").attr("x1", 0).attr("x2", 100).attr("y1", 100).attr("y2",200).attr("stroke", "green").attr("stroke-width", 10);
+        var color = d3.scale.category10();
+
+        var x = d3.time.scale()
+                .range([0, width]);
+
+        var y = d3.scale.linear()
+                .range([height, 0]);
+
+        var xAxis = d3.svg.axis()
+                .scale(x)
+                .orient("bottom");
+
+        var yAxis = d3.svg.axis()
+                .scale(y)
+                .orient("left")
+                .ticks(7);
+
+        var line = d3.svg.line()
+                .x(function(d) { return x(d.date); })
+                .y(function(d) { return y(d.amount); });
+
+        function make_y_grid() {        
+            return d3.svg.axis()
+                .scale(y)
+                .orient("left");
+        }
+
+//GROWTH RATE CHART
+
+        var canvas1 = d3.select("#student_debt")
+                .append("svg")
+                    .attr("width", width + margin.left + margin.right)
+                    .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        d3.csv("studentdebt.csv", function(error, data) {
+            if (error) throw error;
+
+            data.forEach(function(d) {
+                d.date = parseDate(d.date);
+                d.amount = +d.amount; 
+            });
+
+            x.domain(d3.extent(data, function(d) { return d.date}));
+            y.domain(d3.extent(data, function(d) { return d.amount}));
+
+            var dataNest = d3.nest()
+                .key(function(d) {return d.category;})
+                .entries(data);
+
+            dataNest.forEach(function(d, i) {
+                canvas1.append("path")
+                    .attr("class", "line")
+                    .style("stroke", function() { return d.color = color(i); })
+                    .attr("class", 'tag'+d.key.replace(/\s+/g, ''))
+                    .attr("d", line(d.values));
+            }); 
+
+            canvas1.append("text")
+                    .attr("x", (width / 2))             
+                    .attr("y", 0 - (margin.top / 2))
+                    .attr("text-anchor", "middle")  
+                    .style("font-size", "16px")  
+                    .text("Cumulative Growth since Q1 2006");
+
+            canvas1.append("g")
+               .attr("class", "x axis")
+               .attr("transform", "translate(0," + height + ")")
+               .call(xAxis);
+
+            canvas1.append("g")
+               .attr("class", "y axis")
+               .call(yAxis)
+              .append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 6)
+                .attr("dy", ".71em")
+                .style("text-anchor", "end")
+                .text("Percent %");
+
+            canvas1.append("g")         
+            .attr("class", "grid")
+            .call(make_y_grid()
+                .tickSize(-width, 0, 0)
+                .tickFormat("")
+            );
+
+//HOVERMOUSE HOVERMOUSE HOVERMOUSE HOVERMOUSE HOVERMOUSE HOVERMOUSE
+//HOVERMOUSE HOVERMOUSE HOVERMOUSE HOVERMOUSE HOVERMOUSE HOVERMOUSE
+//HOVERMOUSE HOVERMOUSE HOVERMOUSE HOVERMOUSE HOVERMOUSE HOVERMOUSE
+
+            var categories = color.domain().map(function(d){
+                return {
+                    name: d.category,
+                    values: data.map(function(d){
+                        return{
+                            date: d.date,
+                            amount: +d.amount
+                        }
+                    })
+                }
+            });
+
+            var mouseG = canvas1.append("g")
+                .attr("class", "mouse-over-effects");
+
+            mouseG.append("path") // this is the black vertical line to follow mouse
+              .attr("class", "mouse-line")
+              .style("stroke", "black")
+              .style("stroke-width", "1px")
+              .style("opacity", "0");
+              
+            var lines = document.getElementsByClassName('line');
+
+            var mousePerLine = mouseG.selectAll(".mouse-per-line")
+              .data(categories)
+              .enter()
+              .append("g")
+              .attr("class", "mouse-per-line");
+
+            mousePerLine.append("text")
+              .attr("transform", "translate(10,3)");
+
+            mouseG.append('svg:rect') // append a rect to catch mouse movements on canvas
+              .attr('width', width) // can't catch mouse events on a g element
+              .attr('height', height)
+              .attr('fill', 'none')
+              .attr('pointer-events', 'all')
+              .on('mouseout', function() { // on mouse out hide line, circles and text
+                d3.select(".mouse-line")
+                  .style("opacity", "0");
+                d3.selectAll(".mouse-per-line circle")
+                  .style("opacity", "0");
+                d3.selectAll(".mouse-per-line text")
+                  .style("opacity", "0");
+              })
+              .on('mouseover', function() { // on mouse in show line, circles and text
+                d3.select(".mouse-line")
+                  .style("opacity", "1");
+                d3.selectAll(".mouse-per-line circle")
+                  .style("opacity", "1");
+                d3.selectAll(".mouse-per-line text")
+                  .style("opacity", "1");
+              })
+              .on('mousemove', function() { // mouse moving over canvas
+                var mouse = d3.mouse(this);
+                d3.select(".mouse-line")
+                  .attr("d", function() {
+                    var d = "M" + mouse[0] + "," + height;
+                    d += " " + mouse[0] + "," + 0;
+                    return d;
+                  });
+
+                d3.selectAll(".mouse-per-line")
+                  .attr("transform", function(d, i) {
+                    console.log(width/mouse[0])
+                    var xDate = x.invert(mouse[0]),
+                        bisect = d3.bisector(function(d) { return d.amount; }).right;
+                        idx = bisect(d.values, xDate);
+                    
+                    var beginning = 0,
+                        end = lines[i].getTotalLength(),
+                        target = null;
+
+                    while (true){
+                      target = Math.floor((beginning + end) / 2);
+                      pos = lines[i].getPointAtLength(target);
+                      if ((target === end || target === beginning) && pos.x !== mouse[0]) {
+                          break;
+                      }
+                      if (pos.x > mouse[0])      end = target;
+                      else if (pos.x < mouse[0]) beginning = target;
+                      else break; //position found
+                    }
+                    
+                    d3.select(this).select('text')
+                      .text(y.invert(pos.y).toFixed(2));
+                      
+                    return "translate(" + mouse[0] + "," + pos.y +")";
+                  });
+              });
+        });
+
+//DELINQUENCY RATE
+
+        var canvas2 = d3.select("#delinquency_rates")
+                .append("svg")
+                    .attr("width", width + margin.left + margin.right)
+                    .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        d3.csv("delinquency_rates.csv", function(error, data) {
+            if (error) throw error;
+
+            data.forEach(function(d) {
+                d.date = parseDate(d.date);
+                d.amount = +d.amount; 
+            });
+
+            x.domain(d3.extent(data, function(d) { return d.date}));
+            y.domain(d3.extent(data, function(d) { return d.amount}));
+
+            var dataNest = d3.nest()
+                .key(function(d) {return d.category;})
+                .entries(data);
+
+            dataNest.forEach(function(d, i) {
+                canvas2.append("path")
+                    .attr("class", "line")
+                    .style("stroke", function() { return d.color = color(i); })
+                    .attr("class", 'tag'+d.key.replace(/\s+/g, ''))
+                    .attr("d", line(d.values));
+            }); 
+
+            canvas2.append("g")
+               .attr("class", "x axis")
+               .attr("transform", "translate(0," + height + ")")
+               .call(xAxis);
+
+            canvas2.append("text")
+                    .attr("x", (width / 2))             
+                    .attr("y", 0 - (margin.top / 2))
+                    .attr("text-anchor", "middle")  
+                    .style("font-size", "16px")  
+                    .text("Loan Balance Delinquent 90+ Days");
+
+            canvas2.append("g")
+               .attr("class", "y axis")
+               .call(yAxis)
+              .append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 6)
+                .attr("dy", ".71em")
+                .style("text-anchor", "end")
+                .text("Percent %");
+
+            canvas2.append("g")         
+            .attr("class", "grid")
+            .call(make_y_grid()
+                .tickSize(-width, 0, 0)
+                .tickFormat("")
+            );
+
+            var mouseG = canvas.append("g")
+                .attr("class", "mouse-over-effects");
+
+            mouseG.append("path") // this is the black vertical line to follow mouse
+              .attr("class", "mouse-line")
+              .style("stroke", "black")
+              .style("stroke-width", "1px")
+              .style("opacity", "0");
+              
+            var lines = document.getElementsByClassName('line');
+
+            var mousePerLine = mouseG.selectAll(".mouse-per-line")
+              .data(categories)
+              .enter()
+              .append("g")
+              .attr("class", "mouse-per-line");
+
+            mousePerLine.append("text")
+              .attr("transform", "translate(10,3)");
+
+            mouseG.append('svg:rect') // append a rect to catch mouse movements on canvas
+              .attr('width', width) // can't catch mouse events on a g element
+              .attr('height', height)
+              .attr('fill', 'none')
+              .attr('pointer-events', 'all')
+              .on('mouseout', function() { // on mouse out hide line, circles and text
+                d3.select(".mouse-line")
+                  .style("opacity", "0");
+                d3.selectAll(".mouse-per-line circle")
+                  .style("opacity", "0");
+                d3.selectAll(".mouse-per-line text")
+                  .style("opacity", "0");
+              })
+              .on('mouseover', function() { // on mouse in show line, circles and text
+                d3.select(".mouse-line")
+                  .style("opacity", "1");
+                d3.selectAll(".mouse-per-line circle")
+                  .style("opacity", "1");
+                d3.selectAll(".mouse-per-line text")
+                  .style("opacity", "1");
+              })
+              .on('mousemove', function() { // mouse moving over canvas
+                var mouse = d3.mouse(this);
+                d3.select(".mouse-line")
+                  .attr("d", function() {
+                    var d = "M" + mouse[0] + "," + height;
+                    d += " " + mouse[0] + "," + 0;
+                    return d;
+                  });
+
+                d3.selectAll(".mouse-per-line")
+                  .attr("transform", function(d, i) {
+                    console.log(width/mouse[0])
+                    var xDate = x.invert(mouse[0]),
+                        bisect = d3.bisector(function(d) { return d.amount; }).right;
+                        idx = bisect(d.values, xDate);
+                    
+                    var beginning = 0,
+                        end = lines[i].getTotalLength(),
+                        target = null;
+
+                    while (true){
+                      target = Math.floor((beginning + end) / 2);
+                      pos = lines[i].getPointAtLength(target);
+                      if ((target === end || target === beginning) && pos.x !== mouse[0]) {
+                          break;
+                      }
+                      if (pos.x > mouse[0])      end = target;
+                      else if (pos.x < mouse[0]) beginning = target;
+                      else break; //position found
+                    }
+                    
+                    d3.select(this).select('text')
+                      .text(y.invert(pos.y).toFixed(2));
+                      
+                    return "translate(" + mouse[0] + "," + pos.y +")";
+                  });
+              });
+            
+        });
+
+//INTEREST RATE
+
+        var canvas3 = d3.select("#interest_rates")
+                .append("svg")
+                    .attr("width", width + margin.left + margin.right)
+                    .attr("height", height + margin.top + (margin.bottom*2))
+                .append("g")
+                    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        d3.csv("interest_rates.csv", function(error, data) {
+            if (error) throw error;
+
+            data.forEach(function(d) {
+                d.date = parseDate(d.date);
+                d.amount = +d.amount; 
+            });
+
+            x.domain(d3.extent(data, function(d) { return d.date}));
+            y.domain(d3.extent(data, function(d) { return d.amount}));
+
+            var dataNest = d3.nest()
+                .key(function(d) {return d.category;})
+                .entries(data);
+
+            var legendSpace = width/dataNest.length;
+
+            dataNest.forEach(function(d, i) {
+                canvas3.append("path")
+                    .attr("class", "line")
+                    .style("stroke", function() { return d.color = color(i); })
+                    .attr("class", 'tag'+d.key.replace(/\s+/g, ''))
+                    .attr("d", line(d.values));
+
+                canvas3.append("rect")
+                  .attr("width", 18)
+                  .attr("height", 18)
+                  .attr("x", 
+                    function () {
+                    if (d.key.length < 10 && d.key.length > 4)
+                        return i*legendSpace + 10;
+                    else if (d.key.length < 5)
+                        return i*legendSpace + 20;
+                    else 
+                        return i*legendSpace;
+                    })
+                  .attr("y", height + margin.bottom)
+                  .attr("class", "legend")
+                  .attr("class", 'tag'+d.key.replace(/\s+/g, ''))
+                  .style("fill", function() {
+                    return d.color = color(i);
+                  })
+                  .on("click", function(){ 
+                    var active = d.active ? false : true,
+                    newOpacity = active ? 0.3 : 1;     
+                    d3.selectAll(".tag"+d.key.replace(/\s+/g, ''))
+                        .transition().duration(300)
+                        .style("opacity", newOpacity);  
+                    d.active = active;
+                  });
+
+                canvas3.append("text")
+                    .attr("x", (legendSpace/2)+i*legendSpace)
+                    .attr("y", height + margin.bottom + 15)
+                    .attr("class", "legend")
+                    .style("text-anchor", "middle")   
+                    .style("font-size", "13px")
+                    .text(d.key)
+                    .on("click", function(){ 
+                    var active = d.active ? false : true,
+                    newOpacity = active ? 0.3 : 1;     
+                    d3.selectAll(".tag"+d.key.replace(/\s+/g, ''))
+                        .transition().duration(300)
+                        .style("opacity", newOpacity);  
+                    d.active = active;
+                    });
+            }); 
+
+            canvas3.append("text")
+                    .attr("x", (width / 2))             
+                    .attr("y", 0 - (margin.top / 2))
+                    .attr("text-anchor", "middle")  
+                    .style("font-size", "15px")  
+                    .text("Premium on Underlying Rate");
+
+            canvas3.append("g")
+               .attr("class", "x axis")
+               .attr("transform", "translate(0," + height + ")")
+               .call(xAxis);
+
+            canvas3.append("g")
+               .attr("class", "y axis")
+               .call(yAxis)
+              .append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 6)
+                .attr("dy", ".71em")
+                .style("text-anchor", "end")
+                .text("Percent %");
+
+            canvas3.append("g")         
+            .attr("class", "grid")
+            .call(make_y_grid()
+                .tickSize(-width, 0, 0)
+                .tickFormat("")
+            );
+
+            
+        });
+        
+        /* var dataset = [["housing", 8.25], ["auto", 1.06], ["credit card", 0.73], ["student", 1.23], ["HELOC", 0.49]]; 
+
+        var h = 500;
+
+        var outerRadius = width / 2.5;
+        var innerRadius = width / 4.5;
+
+        var arc = d3.svg.arc()
+                        .innerRadius(innerRadius)
+                        .outerRadius(outerRadius);
+        
+        var pie = d3.layout.pie()
+                    .value(function(d) { return d[1]; });
+
+//PIE CHART
+
+        var canvas4 = d3.select("#piechart")
+                    .append("svg")
+                    .attr("width", width)
+                    .attr("height", h)
+                    .append("g")
+                    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        canvas4.append("text")
+                .attr("x", width/2.5)             
+                .attr("y", 0 - (margin.top / 2))
+                .attr("text-anchor", "middle")  
+                .style("font-size", "16px")  
+                .text("Household Debt and Credit as of Q4 2015, in trillion $");
+        
+        var arcs = canvas4.selectAll("g.arc")
+                      .data(pie(dataset))
+                      .enter()
+                      .append("g")
+                      .attr("class", "arc")
+                      .attr("transform", "translate(" + outerRadius + "," + outerRadius + ")");
+
+        var dataNest = d3.nest()
+                .key(function(d) {return d[0];})
+                .entries(dataset);
+
+        dataNest.forEach(function(d, i) {
+
+        arcs.append("path")
+            .attr("fill", function(d, i) {
+                return color(i);
+            })
+            .attr("d", arc);
+        
+        arcs.append("text")
+            .attr("transform", function(d) {
+                return "translate(" + arc.centroid(d) + ")";
+            })
+            .attr("text-anchor", "middle")
+            .attr("fill", "white")
+            .attr("font-size", "1.5em")
+            .text(function(d) {
+                return d.data[1];
+            });
+        }); */
+
+    var tooltip = d3.select("#piechart")
+                          .append("div")
+                          .attr("class", "tooltip");                 
+
+            tooltip.append('div')                        
+              .attr('class', 'count');
+
+    var h = 500,
+    radius = width / 2;
+
+    var color = d3.scale.category10();
+
+    var pie = d3.layout.pie()
+        .value(function(d) { return d.fifteen; });
+
+    var arc = d3.svg.arc()
+        .innerRadius(width / 2.5)
+        .outerRadius(width / 4);
+
+    var svg = d3.select("#piechart").append("svg")
+        .attr("width", width*2)
+        .attr("height", h*.9)
+      .append("g")
+        .attr("transform", "translate(" + width / 2 + "," + h / 2 + ")");
+
+        svg.append("text")
+                    .attr("x", width/ 30)             
+                    .attr("y", 0 - height - margin.top*1.5)
+                    .attr("text-anchor", "middle")  
+                    .style("font-size", "20px")  
+                    .text("Household Debt and Credit by Year, in trillion $");
+
+    d3.csv("debtamount.csv", type, function(error, data) {
+      if (error) throw error;
+
+     var dataNest = d3.nest()
+                .key(function(d) {return d.category;})
+                .entries(data);
+
+      var path = svg.datum(data).selectAll("path")
+          .data(pie)
+        .enter().append("path")
+          .attr("fill", function(d, i) { return color(i); })
+          .attr("d", arc)
+          .each(function(d) { this._current = d; });
+
+      path.on('mouseover', function(d) {         
+                tooltip.select('.count').html(d.value);
+                tooltip.style('display', 'block');   
+              });                                       
+
+      path.on('mouseout', function(d) {          
+        tooltip.style('display', 'none');                    
+      });  
+
+      var legend = svg.selectAll(".legend")
+            .data(dataNest)
+            .enter().append("g")
+          .attr("transform", function(d, i) { return "translate(-38," + (i * 20 - 42) + ")"; })
+          .attr("class", "legend");
+
+      d3.selectAll("input")
+          .on("change", change);
+
+      var timeout = setTimeout(function() {
+        d3.select("input[value=\"fourteen\"]").property("checked", true).each(change);
+      }, 2000);
+
+      function change() {
+        var value = this.value;
+        clearTimeout(timeout);
+        pie.value(function(d) { return d[value]; }); 
+        path = path.data(pie);
+        legend = legend.data(pie);
+        path.transition().duration(750).attrTween("d", arcTween); 
+      }
+
+      legend.append("rect")
+          .attr("width", 18)
+          .attr("height", 18)
+          .style("fill", function(d, i) {
+            return color(i);
+          });
+
+      legend.append("text")
+          .attr("x", 24)
+          .attr("y", 12)
+          .text(function(d) { return d.key; });
+    });
+
+    function type(d) {
+      d.fifteen = +d.fifteen;
+      d.fourteen = +d.fourteen;
+      d.thirteen = +d.thirteen;
+      d.twelve = +d.twelve;
+      d.eleven = +d.eleven;
+      d.ten = +d.ten;
+      d.onine = +d.onine;
+      d.oeight = +d.oeight;
+      d.oseven = +d.oseven;
+      d.osix = +d.osix;
+      return d;
+    }
+
+    function arcTween(a) {
+      var i = d3.interpolate(this._current, a);
+      this._current = i(0);
+      return function(t) {
+        return arc(i(t));
+      };
+    }
+
+
         </script>
     </body>
 </html>
