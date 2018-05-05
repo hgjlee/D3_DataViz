@@ -2,7 +2,7 @@
 
 We wanted to better understand the student debt crisis in the US by analyzing and visualizing its data.
 
-![Screenshot](Screen\ Shot\ 2016-05-24\ at\ 9.12.20\ PM.png)
+![Screenshot](Screen Shot 2016-05-24 at 9.12.20 PM.png)
 
 ## Data
 * [The Center for Microeconomic Data](https://www.newyorkfed.org/microeconomics/databank.html)
